@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Maze Generator Pro",
     "author": "Your Name",
-    "version": (4, 5),
+    "version": (4, 6),
     "blender": (2, 80, 0),
     "location": "View3D > N-Panel > Maze Pro",
     "description": "Professional 3D Maze Generator with Physics & Lighting",
@@ -288,22 +288,17 @@ def create_brick_material(name, scale):
     return mat
 
 def solve_bfs_path(grid, w, h, start, end):
-    """Finds the shortest path to protect it from being overwritten by rooms"""
     queue = [[start]]
     visited = {start}
     dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    
     while queue:
         path = queue.pop(0)
         node = path[-1]
-        if node == end:
-            return set(path) # Return set for fast lookup
-        
+        if node == end: return set(path)
         cx, cy = node
         for dx, dy in dirs:
             nx, ny = cx + dx, cy + dy
             if 0 <= nx < w and 0 <= ny < h:
-                # 0 is path, 1 is wall
                 if grid[nx][ny] == 0 and (nx, ny) not in visited:
                     visited.add((nx, ny))
                     new_path = list(path)
@@ -314,23 +309,19 @@ def solve_bfs_path(grid, w, h, start, end):
 def algo_recursive_backtracker(grid, w, h, start_x, start_y, directions):
     grid[start_x][start_y] = 0
     stack = [(start_x, start_y)]
-
     while stack:
         cx, cy = stack[-1]
         neighbors = []
         for dx, dy in directions:
             nx, ny = cx + dx, cy + dy
             if 0 < nx < w - 1 and 0 < ny < h - 1:
-                if grid[nx][ny] == 1:
-                    neighbors.append((nx, ny, dx, dy))
-        
+                if grid[nx][ny] == 1: neighbors.append((nx, ny, dx, dy))
         if neighbors:
             nx, ny, dx, dy = random.choice(neighbors)
             grid[cx + dx // 2][cy + dy // 2] = 0
             grid[nx][ny] = 0
             stack.append((nx, ny))
-        else:
-            stack.pop()
+        else: stack.pop()
 
 def algo_hunt_and_kill(grid, w, h, start_x, start_y, directions):
     grid[start_x][start_y] = 0
@@ -341,15 +332,13 @@ def algo_hunt_and_kill(grid, w, h, start_x, start_y, directions):
             for dx, dy in directions:
                 nx, ny = current_x + dx, current_y + dy
                 if 0 < nx < w - 1 and 0 < ny < h - 1:
-                    if grid[nx][ny] == 1:
-                        neighbors.append((nx, ny, dx, dy))
+                    if grid[nx][ny] == 1: neighbors.append((nx, ny, dx, dy))
             if neighbors:
                 nx, ny, dx, dy = random.choice(neighbors)
                 grid[current_x + dx // 2][current_y + dy // 2] = 0
                 grid[nx][ny] = 0
                 current_x, current_y = nx, ny
-            else:
-                break 
+            else: break 
         current_x, current_y = None, None
         for x in range(1, w - 1, 2):
             for y in range(1, h - 1, 2):
@@ -358,8 +347,7 @@ def algo_hunt_and_kill(grid, w, h, start_x, start_y, directions):
                     for dx, dy in directions:
                         nx, ny = x + dx, y + dy
                         if 0 < nx < w - 1 and 0 < ny < h - 1:
-                            if grid[nx][ny] == 0:
-                                visited_neighbors.append((nx, ny, dx, dy))
+                            if grid[nx][ny] == 0: visited_neighbors.append((nx, ny, dx, dy))
                     if visited_neighbors:
                         nx, ny, dx, dy = random.choice(visited_neighbors)
                         grid[x + dx // 2][y + dy // 2] = 0
@@ -375,8 +363,7 @@ def algo_prims(grid, w, h, start_x, start_y, directions):
         for dx, dy in directions:
             nx, ny = cx + dx, cy + dy
             if 0 < nx < w - 1 and 0 < ny < h - 1:
-                if grid[nx][ny] == 1:
-                    frontier.append((nx, ny, cx, cy))
+                if grid[nx][ny] == 1: frontier.append((nx, ny, cx, cy))
     add_frontier(start_x, start_y)
     while frontier:
         idx = random.randrange(len(frontier))
@@ -427,8 +414,7 @@ def algo_sidewinder(grid, w, h):
                     grid[mx][my+1] = 0
                     grid[mx][my+2] = 0
                 run = []
-            else:
-                grid[x+1][y] = 0
+            else: grid[x+1][y] = 0
 
 def algo_eller(grid, w, h):
     row_set = {}
@@ -511,7 +497,6 @@ def algo_recursive_division(grid, w, h):
 # 3. POST PROCESSING
 # ==========================================
 def apply_braiding(grid, w, h, chance):
-    """Removes dead ends to create loops"""
     dead_ends = []
     for x in range(1, w-1, 2):
         for y in range(1, h-1, 2):
@@ -522,8 +507,7 @@ def apply_braiding(grid, w, h, chance):
                 for dx, dy in dirs:
                     if grid[x+dx][y+dy] == 1: walls += 1
                     nx, ny = x + dx*2, y + dy*2
-                    if 0 < nx < w-1 and 0 < ny < h-1:
-                        neighbors.append((dx, dy))
+                    if 0 < nx < w-1 and 0 < ny < h-1: neighbors.append((dx, dy))
                 if walls == 3: dead_ends.append((x, y, neighbors))
     for x, y, neighbors in dead_ends:
         if random.random() < chance and neighbors:
@@ -531,12 +515,7 @@ def apply_braiding(grid, w, h, chance):
             grid[x + dx][y + dy] = 0 
 
 def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
-    """
-    Carves out open rooms with walls and EXACTLY 1 door that connects to a path.
-    Ensures rooms do NOT overwrite the protected path (Solution) AND do not overlap.
-    """
     if min_s > max_s: min_s, max_s = max_s, min_s
-    
     boss_locations = []
     existing_rooms = []
     
@@ -545,13 +524,11 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
         attempts = 0
         while not placed and attempts < 100:
             attempts += 1
-            
             rw_nodes = random.randint(min_s, max_s)
             rh_nodes = random.randint(min_s, max_s)
             rw_span, rh_span = rw_nodes * 2, rh_nodes * 2
             
             if w - 1 - rw_span <= 1 or h - 1 - rh_span <= 1: continue 
-            
             rx = random.randrange(1, w - 1 - rw_span, 2)
             ry = random.randrange(1, h - 1 - rh_span, 2)
             
@@ -561,7 +538,6 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
             new_min_y = ry - 1 - margin
             new_max_y = ry + rh_span + 1 + margin
             
-            # 1. Check Overlap
             overlap = False
             for (ex_min_x, ex_max_x, ex_min_y, ex_max_y) in existing_rooms:
                 if (new_min_x < ex_max_x and new_max_x > ex_min_x and
@@ -570,7 +546,6 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
                     break
             if overlap: continue
 
-            # 2. Check Conflict with Protected Path
             conflict = False
             for x in range(rx - 1, rx + rw_span + 2):
                 for y in range(ry - 1, ry + rh_span + 2):
@@ -581,22 +556,16 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
                 if conflict: break
             if conflict: continue
 
-            # 3. CRITICAL CHECK: Find Valid Door Candidates FIRST
             candidates = []
-            
-            # Bottom Wall Candidates (y = ry - 1)
             if ry - 1 > 0:
                 for x in range(rx, rx + rw_span + 1, 2):
                     if grid[x][ry - 2] == 0: candidates.append((x, ry - 1))
-            # Top Wall Candidates
             if ry + rh_span + 1 < h - 1:
                 for x in range(rx, rx + rw_span + 1, 2):
                     if grid[x][ry + rh_span + 2] == 0: candidates.append((x, ry + rh_span + 1))
-            # Left Wall Candidates
             if rx - 1 > 0:
                 for y in range(ry, ry + rh_span + 1, 2):
                     if grid[rx - 2][y] == 0: candidates.append((rx - 1, y))
-            # Right Wall Candidates
             if rx + rw_span + 1 < w - 1:
                 for y in range(ry, ry + rh_span + 1, 2):
                     if grid[rx + rw_span + 2][y] == 0: candidates.append((rx + rw_span + 1, y))
@@ -606,7 +575,6 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
             placed = True
             existing_rooms.append((rx - 1, rx + rw_span + 1, ry - 1, ry + rh_span + 1))
             
-            # 1. Build Walls
             for i in range(rw_span + 3):
                 cx = rx - 1 + i
                 if 0 <= cx < w:
@@ -618,14 +586,12 @@ def apply_rooms_smart(grid, w, h, count, min_s, max_s, protected_cells):
                     if rx - 1 >= 0: grid[rx - 1][cy] = 1
                     if rx + rw_span + 1 < w: grid[rx + rw_span + 1][cy] = 1
             
-            # 2. Clear Interior
             for i in range(rw_span + 1):
                 for j in range(rh_span + 1):
                     grid[rx + i][ry + j] = 0
             
             boss_locations.append((rx + rw_span // 2, ry + rh_span // 2))
             
-            # 3. Open ONE Door
             door_x, door_y = random.choice(candidates)
             grid[door_x][door_y] = 0
                 
@@ -642,8 +608,7 @@ class MESH_OT_generate_maze(bpy.types.Operator):
     def execute(self, context):
         props = context.scene.maze_props
         
-        if props.use_random_seed:
-            props.seed = random.randint(0, 999999)
+        if props.use_random_seed: props.seed = random.randint(0, 999999)
         random.seed(props.seed)
         
         algo = props.maze_algorithm
@@ -658,8 +623,7 @@ class MESH_OT_generate_maze(bpy.types.Operator):
         # --- CLEANUP ---
         if "Maze" in bpy.data.collections:
             collection = bpy.data.collections["Maze"]
-            for obj in collection.objects:
-                bpy.data.objects.remove(obj, do_unlink=True)
+            for obj in collection.objects: bpy.data.objects.remove(obj, do_unlink=True)
             bpy.data.collections.remove(collection)
 
         maze_col = bpy.data.collections.new("Maze")
@@ -674,15 +638,14 @@ class MESH_OT_generate_maze(bpy.types.Operator):
             if not wall_mat:
                 wall_mat = bpy.data.materials.new(wall_mat_name)
             wall_mat.use_nodes = False
-            wall_mat.diffuse_color = (0.1, 0.1, 0.12, 1.0) # Dark Concrete
+            wall_mat.diffuse_color = (0.1, 0.1, 0.12, 1.0)
 
-        # --- GRID INITIALIZATION ---
+        # --- GRID ---
         grid = [[1 for _ in range(h)] for _ in range(w)]
 
-        # --- RUN ALGORITHM ---
+        # --- RUN ALGO ---
         directions = [(0, 2), (0, -2), (2, 0), (-2, 0)]
         sx, sy = 1, 1
-
         if algo == 'BACKTRACKER': algo_recursive_backtracker(grid, w, h, sx, sy, directions)
         elif algo == 'HUNT_KILL': algo_hunt_and_kill(grid, w, h, sx, sy, directions)
         elif algo == 'PRIMS': algo_prims(grid, w, h, sx, sy, directions)
@@ -697,10 +660,9 @@ class MESH_OT_generate_maze(bpy.types.Operator):
         solver_start = (1, 0)
         solver_end = (w-2, h-1)
         
-        # --- POST PROCESSING ---
-        if props.braid_chance > 0:
-            apply_braiding(grid, w, h, props.braid_chance)
-            
+        # --- POST PROCESS ---
+        if props.braid_chance > 0: apply_braiding(grid, w, h, props.braid_chance)
+        
         boss_spots = []
         if props.room_count > 0:
             protected = solve_bfs_path(grid, w, h, solver_start, solver_end)
@@ -708,7 +670,7 @@ class MESH_OT_generate_maze(bpy.types.Operator):
 
         objects_to_unwrap = []
 
-        # --- BUILD FLOOR ---
+        # --- FLOOR ---
         floor_verts = [(0, 0, 0), (w * size, 0, 0), (w * size, h * size, 0), (0, h * size, 0)]
         floor_faces = [(0, 1, 2, 3)]
         floor_mesh = bpy.data.meshes.new("MazeFloorMesh")
@@ -718,10 +680,10 @@ class MESH_OT_generate_maze(bpy.types.Operator):
         maze_col.objects.link(floor_obj)
         objects_to_unwrap.append(floor_obj)
         
-        # --- BUILD CEILING ---
+        # --- CEILING ---
         if props.add_ceiling:
             ceil_verts = [(0, 0, wall_h), (w * size, 0, wall_h), (w * size, h * size, wall_h), (0, h * size, wall_h)]
-            ceil_faces = [(3, 2, 1, 0)] # Flipped normals for inside view
+            ceil_faces = [(3, 2, 1, 0)]
             ceil_mesh = bpy.data.meshes.new("MazeCeilingMesh")
             ceil_mesh.from_pydata(ceil_verts, [], ceil_faces)
             ceil_obj = bpy.data.objects.new("MazeCeiling", ceil_mesh)
@@ -729,10 +691,8 @@ class MESH_OT_generate_maze(bpy.types.Operator):
             maze_col.objects.link(ceil_obj)
             objects_to_unwrap.append(ceil_obj)
         
-        # --- BUILD WALLS ---
-        # === DEFAULT BLOCK LOGIC ===
-        verts = []
-        faces = []
+        # --- WALLS ---
+        verts, faces = [], []
         vert_index = 0
         
         def add_wall(x, y):
@@ -741,12 +701,11 @@ class MESH_OT_generate_maze(bpy.types.Operator):
             half_thick = (size * thick_ratio) / 2
             x_min, x_max = cx - half_thick, cx + half_thick
             y_min, y_max = cy - half_thick, cy + half_thick
-            
             if x > 0 and grid[x-1][y] == 1: x_min = x * size
             if x < w - 1 and grid[x+1][y] == 1: x_max = (x + 1) * size
             if y > 0 and grid[x][y-1] == 1: y_min = y * size
             if y < h - 1 and grid[x][y+1] == 1: y_max = (y + 1) * size
-
+            
             current_h = wall_h
             if jitter > 0:
                 current_h += random.uniform(-jitter, jitter)
@@ -773,16 +732,13 @@ class MESH_OT_generate_maze(bpy.types.Operator):
         maze_col.objects.link(obj)
         obj.data.materials.append(wall_mat)
         
-        # UV Unwrap for default
-        if props.auto_uv:
-            objects_to_unwrap.append(obj)
+        if props.auto_uv: objects_to_unwrap.append(obj)
 
-        # Common Final Steps
         bpy.ops.object.select_all(action='DESELECT')
         obj.select_set(True)
         context.view_layer.objects.active = obj
         
-        # --- AUTO UV UNWRAP (Fix for walls/floor) ---
+        # --- UV UNWRAP ---
         if props.auto_uv and objects_to_unwrap:
             for target_obj in objects_to_unwrap:
                 bpy.ops.object.select_all(action='DESELECT')
@@ -793,6 +749,32 @@ class MESH_OT_generate_maze(bpy.types.Operator):
                 bpy.ops.uv.cube_project(cube_size=size * 2, correct_aspect=True)
                 bpy.ops.object.mode_set(mode='OBJECT')
         
+        # --- LIGHTS (THE MISSING LOGIC RESTORED!) ---
+        if props.add_lights:
+            light_data = bpy.data.lights.new(name="MazeTorch", type='POINT')
+            light_data.energy = props.light_power
+            light_data.color = props.light_color
+            light_data.shadow_soft_size = 0.5
+            
+            light_spots = []
+            for x in range(1, w-1, 2):
+                for y in range(1, h-1, 2):
+                    if grid[x][y] == 0:
+                        neighbors = 0
+                        if grid[x+1][y] == 0: neighbors += 1
+                        if grid[x-1][y] == 0: neighbors += 1
+                        if grid[x][y+1] == 0: neighbors += 1
+                        if grid[x][y-1] == 0: neighbors += 1
+                        
+                        # Place lights at corners/dead ends
+                        if neighbors != 2 and random.random() < 0.4:
+                            light_spots.append((x, y))
+            
+            for (lx, ly) in light_spots:
+                light_obj = bpy.data.objects.new(name="Torch", object_data=light_data)
+                light_obj.location = (lx*size + size/2, ly*size + size/2, wall_h * 0.7)
+                maze_col.objects.link(light_obj)
+
         # --- MARKERS ---
         if props.show_markers:
             def create_marker(lx, ly, is_start=True):
@@ -855,7 +837,6 @@ class MESH_OT_generate_maze(bpy.types.Operator):
                     loot_obj = bpy.data.objects.new("Loot", loot_mesh)
                     loot_obj.location = (wx, wy, wz)
                     maze_col.objects.link(loot_obj)
-                    
                     if props.add_physics:
                         context.view_layer.objects.active = loot_obj
                         bpy.ops.rigidbody.object_add()
@@ -881,13 +862,24 @@ class MESH_OT_generate_maze(bpy.types.Operator):
                 boss_obj = bpy.data.objects.new("Boss", boss_mesh)
                 boss_obj.location = (wx, wy, 0)
                 maze_col.objects.link(boss_obj)
-                
                 if props.add_physics:
                     context.view_layer.objects.active = boss_obj
                     bpy.ops.rigidbody.object_add()
                     boss_obj.rigid_body.type = 'ACTIVE'
                     boss_obj.rigid_body.mass = 5.0
                     boss_obj.rigid_body.collision_shape = 'CONVEX_HULL'
+
+        # --- PHYSICS ---
+        if props.add_physics:
+            if not context.scene.rigidbody_world: bpy.ops.rigidbody.world_add()
+            context.view_layer.objects.active = obj
+            bpy.ops.rigidbody.object_add()
+            obj.rigid_body.type = 'PASSIVE'
+            obj.rigid_body.collision_shape = 'MESH'
+            context.view_layer.objects.active = floor_obj
+            bpy.ops.rigidbody.object_add()
+            floor_obj.rigid_body.type = 'PASSIVE'
+            floor_obj.rigid_body.collision_shape = 'BOX'
 
         # --- SOLVER ---
         if props.show_solution:
@@ -910,9 +902,7 @@ class MESH_OT_generate_maze(bpy.types.Operator):
                                 new_path.append((nx, ny))
                                 queue.append(new_path)
                 return []
-            
             final_path = solve_bfs_ordered(grid, solver_start, solver_end)
-            
             if final_path:
                 sol_verts = [(p[0]*size + size/2, p[1]*size + size/2, wall_h/2) for p in final_path]
                 sol_edges = [(i, i+1) for i in range(len(sol_verts)-1)]
