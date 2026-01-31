@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Maze Generator Pro",
-    "author": "Your Name",
+    "author": "BasharatLeoGill",
     "version": (4, 6),
     "blender": (2, 80, 0),
     "location": "View3D > N-Panel > Maze Pro",
